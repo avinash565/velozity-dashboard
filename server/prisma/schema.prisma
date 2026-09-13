@@ -1,0 +1,127 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  PROJECT_MANAGER
+  DEVELOPER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  role          UserRole
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  projects      Project[]
+  assignedTasks Task[]
+  activityLogs  ActivityLog[]
+  notifications Notification[]
+  refreshTokens RefreshToken[]
+}
+
+model Client {
+  id        Int       @id @default(autoincrement())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  projects  Project[]
+}
+
+model Project {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  clientId    Int
+  managerId   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  client  Client @relation(fields: [clientId], references: [id])
+  manager User   @relation(fields: [managerId], references: [id])
+
+  tasks Task[]
+
+  activityLogs ActivityLog[]
+}
+
+model Task {
+  id                  Int          @id @default(autoincrement())
+  title               String
+  description         String?
+  projectId           Int
+  assignedDeveloperId Int
+  status              TaskStatus   @default(TODO)
+  priority            TaskPriority @default(MEDIUM)
+  dueDate             DateTime
+  isOverdue           Boolean      @default(false)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  project           Project @relation(fields: [projectId], references: [id])
+  assignedDeveloper User    @relation(fields: [assignedDeveloperId], references: [id])
+
+  activityLogs ActivityLog[]
+}
+
+model ActivityLog {
+  id        Int         @id @default(autoincrement())
+  projectId Int
+  taskId    Int?
+  userId    Int
+  action    String
+  oldStatus TaskStatus?
+  newStatus TaskStatus?
+  createdAt DateTime    @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+  task    Task?   @relation(fields: [taskId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  tokenHash String
+  userId    Int
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
